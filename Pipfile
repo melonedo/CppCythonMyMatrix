@@ -1,0 +1,13 @@
+[[source]]
+url = "https://mirror.sjtu.edu.cn/pypi/web/simple"
+verify_ssl = true
+name = "pip_conf_index_global"
+
+[packages]
+numpy = "*"
+cython = ">=3.0"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"
