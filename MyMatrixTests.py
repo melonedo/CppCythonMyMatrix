@@ -13,3 +13,5 @@ if __name__ == "__main__":
     # print([]+mat1)
     print((A @ A - (B @ B).to_ndarray()).sum())
     print((A @ A - matmul(A, A)).sum())
+    kernel = Matrix.from_ndarray(np.array([[-1,2,1]], dtype=float))
+    print(kernel.conv(kernel))

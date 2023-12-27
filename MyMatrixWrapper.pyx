@@ -101,3 +101,13 @@ cdef class Matrix:
         ret = Matrix()
         ret.mat = self.mat.mul(other.mat)
         return ret
+
+    def inv(self, double tol = 0.001):
+        ret = Matrix()
+        ret.mat = self.mat.inv(tol)
+        return ret
+
+    def conv(self, Matrix kernel):
+        ret = Matrix()
+        ret.mat = self.mat.conv(kernel.mat)
+        return ret

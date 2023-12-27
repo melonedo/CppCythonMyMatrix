@@ -24,5 +24,7 @@ cdef extern from "MyMatrix.hpp" nogil:
         MyMatrix[T] operator+(double) except +
         MyMatrix[T] operator-(double) except +
         MyMatrix[T] operator*(double) except +
+        MyMatrix[T] inv(T) except +
+        MyMatrix[T] conv(MyMatrix[T]) noexcept
     
     MyMatrix[double] operator-(double, MyMatrix[double]) except +

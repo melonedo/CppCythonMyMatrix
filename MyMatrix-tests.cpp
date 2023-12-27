@@ -219,6 +219,12 @@ TYPED_TEST(OperatorTest, transpose) {
   EXPECT_EQ(m1.transpose(), m2);
 }
 
+TYPED_TEST(OperatorTest, conv) {
+  MyMatrix<TypeParam> kernel{{-1, 2, -1}};
+  MyMatrix<TypeParam> m2{{6}};
+  EXPECT_EQ(kernel.conv(kernel), m2);
+}
+
 TYPED_TEST(OperatorTest, Exception) {
   MyMatrix<TypeParam> m1{{1, 2, 3}, {4, 5, 6}};
   MyMatrix<TypeParam> m8{{7, 7, 7}};

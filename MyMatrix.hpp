@@ -4,19 +4,20 @@
 #include <immintrin.h>
 #include <stdlib.h>
 
+#include <cassert>
+#include <cmath>
 #include <sstream>
 #include <stdexcept>
-#include <cmath>
 #include <vector>
-#include <cassert>
 
 #ifdef _MSC_VER
 #define ALWAYS_INLINE __forceinline
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
 #else
 #define ALWAYS_INLINE __attribute__((always_inline)) inline
 #define NOALIAS
 #endif
-
 
 // 乘法和加法在维度不匹配，或访问了不存在的元素时抛出
 class ShapeError : public std::exception {
@@ -98,7 +99,8 @@ class MatMulKernel {
 };
 
 template <>
-ALWAYS_INLINE void MatMulKernel<double>::jkernel(size_t i, size_t j, size_t k) const {
+ALWAYS_INLINE void MatMulKernel<double>::jkernel(size_t i, size_t j,
+                                                 size_t k) const {
   // max_j must also be a multiple of Cj
   if (Cj > max_j - j || max_j & (Cj - 1)) {
     const size_t Cj = cache_size / sizeof(double);  // ???
@@ -190,7 +192,8 @@ class MyMatrix final {
         data(nrow_ && ncol_ ? alloc(nrow_ * ncol_) : nullptr) {}
 
   // 一般矩阵构造
-  MyMatrix(const T *data_, size_t nrow_, size_t ncol_) : MyMatrix(nrow_, ncol_) {
+  MyMatrix(const T *data_, size_t nrow_, size_t ncol_)
+      : MyMatrix(nrow_, ncol_) {
     size_t size = nrow * ncol;
     for (size_t i = 0; i < size; i++) {
       data[i] = data_[i];
@@ -199,7 +202,9 @@ class MyMatrix final {
 
   // 运算符
 
-  bool operator==(const MyMatrix &other) const noexcept { return isapprox(*this, other, {}); }
+  bool operator==(const MyMatrix &other) const noexcept {
+    return isapprox(*this, other, {});
+  }
 
   friend bool isapprox(const MyMatrix &a, const MyMatrix &b, T tol = {}) {
     if (a.ncol == b.ncol && a.nrow == b.nrow) {
@@ -310,7 +315,7 @@ class MyMatrix final {
       const size_t C1 = C0, C2 = C0;
 
       const MatMulKernel<T> kernel(res.data, this->data, other.data, this->nrow,
-                             other.ncol, this->ncol);
+                                   other.ncol, this->ncol);
       for (size_t j1 = 0; j1 < other.ncol; j1 += C2) {
         for (size_t k1 = 0; k1 < ncol; k1 += C1) {
           for (size_t i1 = 0; i1 < nrow; i1 += C0) {
@@ -440,6 +445,29 @@ class MyMatrix final {
     return res;
   }
 
+  MyMatrix conv(const MyMatrix &kernel) const {
+    ssize_t rows = getRows() - kernel.getRows() + 1;
+    ssize_t cols = getCols() - kernel.getCols() + 1;
+    if (rows <= 0 || cols <= 0) {
+      return {};
+    }
+    MyMatrix res(rows, cols);
+
+    for (size_t i = 0; i < rows; i++) {
+      for (size_t j = 0; j < cols; j++) {
+        T &x = res.get(i, j);
+        x = 0;
+        for (size_t ki = 0; ki < kernel.nrow; ki++) {
+          for (size_t kj = 0; kj < kernel.ncol; kj++) {
+            x += this->get(i + ki, j + kj) * kernel.get(ki, kj);
+          }
+        }
+      }
+    }
+
+    return res;
+  }
+
   // 二元转换为前缀运算
   MyMatrix operator+(const MyMatrix &other) const {
     return MyMatrix(*this) += other;
@@ -522,7 +550,11 @@ class MyMatrix final {
 #endif
 
  private:
-  const T &get(size_t r, size_t c) const { return data[r * ncol + c]; }
+  const T &get(size_t r, size_t c) const {
+    assert(r < nrow && c < ncol);
+    return data[r * ncol + c];
+  }
+  
   T &get(size_t r, size_t c) {
     return const_cast<T &>(const_cast<const MyMatrix *>(this)->get(r, c));
   }
