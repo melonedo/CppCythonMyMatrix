@@ -7,8 +7,7 @@ if(MSVC)
     add_link_options(/LTCG)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS false)
 else()
-    # LTO下可以直接用Object Library动态链接
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma -flto")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
 endif()
 
 option(BUILD_GMOCK OFF)
@@ -30,8 +29,9 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nanobench)
 
-add_library(MyMatrix OBJECT MatMul.cpp)
-target_include_directories(MyMatrix PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(MyMatrix INTERFACE)
+target_include_directories(MyMatrix INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_sources(MyMatrix INTERFACE MatMul.cpp)
 
 
 add_executable(MyMatrix-tests MyMatrix-tests.cpp)

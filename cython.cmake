@@ -14,7 +14,6 @@ target_link_libraries(MyMatrixWrapper PUBLIC Python3::NumPy)
 
 # Debug下缺少python3xx_d.lib，默认编译的话都没法调试了
 set_target_properties(MyMatrixWrapper PROPERTIES EXCLUDE_FROM_ALL TRUE)
-target_include_directories(MyMatrix PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(MyMatrixWrapper PRIVATE MyMatrix)
 target_compile_definitions(MyMatrixWrapper PRIVATE NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION)
 if(MSVC)

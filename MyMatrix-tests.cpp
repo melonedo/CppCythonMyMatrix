@@ -54,7 +54,11 @@ TYPED_TEST(ConstructorTest, MoveConstructor) {
 }
 
 template <typename T>
-class OperatorTest : public ::testing::Test {};
+class OperatorTest : public ::testing::Test {
+ public:
+  static auto constexpr approx = [](const MyMatrix<T>& a, const MyMatrix<T>& b,
+                                    T tol) { return isapprox(a, b, tol); };
+};
 
 TYPED_TEST_SUITE(OperatorTest, TestTypes);
 
@@ -195,10 +199,7 @@ TYPED_TEST(OperatorTest, inverse) {
   res *= 1. / 7;
   auto inv = m.inv();
 
-  auto isapprox =
-      static_cast<bool (*)(const MyMatrix<TypeParam>&,
-                           const MyMatrix<TypeParam>&, TypeParam)>(::isapprox);
-  EXPECT_PRED3(isapprox, res, inv, 0.001);
+  EXPECT_PRED3(this->approx, res, inv, 0.001);
 }
 
 TYPED_TEST(OperatorTest, pseudoinverse) {
@@ -208,11 +209,8 @@ TYPED_TEST(OperatorTest, pseudoinverse) {
   MyMatrix<TypeParam> m2 = m1.transpose();
   MyMatrix<TypeParam> I{{1, 0}, {0, 1}};
 
-  auto isapprox =
-      static_cast<bool (*)(const MyMatrix<TypeParam>&,
-                           const MyMatrix<TypeParam>&, TypeParam)>(::isapprox);
-  EXPECT_PRED3(isapprox, m1 * m1.pinv(), I, 0.001);
-  EXPECT_PRED3(isapprox, m2.pinv() * m2, I, 0.001);
+  EXPECT_PRED3(this->approx, m1 * m1.pinv(), I, 0.001);
+  EXPECT_PRED3(this->approx, m2.pinv() * m2, I, 0.001);
 }
 
 TYPED_TEST(OperatorTest, transpose) {
