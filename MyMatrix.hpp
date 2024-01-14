@@ -1,5 +1,4 @@
-#ifndef MYMATRIX
-#define MYMATRIX
+#pragma once
 
 #include <immintrin.h>
 #include <stdlib.h>
@@ -113,6 +112,24 @@ ALWAYS_INLINE void MatMulKernel<double>::jkernel(size_t i, size_t j,
     __m256d c = _mm256_load_pd(&dst[i * max_j + j]);
     __m256d prod = _mm256_fmadd_pd(a, b, c);
     _mm256_store_pd(&dst[i * max_j + j], prod);
+  }
+}
+
+template <>
+ALWAYS_INLINE void MatMulKernel<float>::jkernel(size_t i, size_t j,
+                                                size_t k) const {
+  // max_j must also be a multiple of Cj
+  if (Cj > max_j - j || max_j & (Cj - 1)) {
+    const size_t Cj = cache_size / sizeof(float);  // ???
+    for (size_t j0 = 0; j0 < std::min(Cj, max_j - j); j0++) {
+      kernel(i, j + j0, k);
+    }
+  } else {
+    __m256 a = _mm256_set1_ps(A[i * max_k + k]);
+    __m256 b = _mm256_load_ps(&B[k * max_j + j]);
+    __m256 c = _mm256_load_ps(&dst[i * max_j + j]);
+    __m256 prod = _mm256_fmadd_ps(a, b, c);
+    _mm256_store_ps(&dst[i * max_j + j], prod);
   }
 }
 
@@ -445,7 +462,7 @@ class MyMatrix final {
     return res;
   }
 
-  MyMatrix conv(const MyMatrix &kernel) const {
+  MyMatrix conv_slow(const MyMatrix &kernel) const {
     ssize_t rows = getRows() - kernel.getRows() + 1;
     ssize_t cols = getCols() - kernel.getCols() + 1;
     if (rows <= 0 || cols <= 0) {
@@ -461,6 +478,31 @@ class MyMatrix final {
           for (size_t kj = 0; kj < kernel.ncol; kj++) {
             x += this->get(i + ki, j + kj) * kernel.get(ki, kj);
           }
+        }
+      }
+    }
+
+    return res;
+  }
+
+  MyMatrix conv(const MyMatrix &kernel) const {
+    ssize_t rows = getRows() - kernel.getRows() + 1;
+    ssize_t cols = getCols() - kernel.getCols() + 1;
+    if (rows <= 0 || cols <= 0) {
+      return {};
+    }
+    MyMatrix res(rows, cols);
+
+    for (size_t i = 0; i < rows; i++) {
+      for (size_t j = 0; j < cols; j++) {
+        res.get(i, j) = 0;
+      }
+    }
+
+    for (size_t ki = 0; ki < kernel.nrow; ki++) {
+      for (size_t kj = 0; kj < kernel.ncol; kj++) {
+        for (size_t i = 0; i < rows; i++) {
+          convKernel(*this, res, kernel.get(ki, kj), ki, kj, i, cols);
         }
       }
     }
@@ -554,15 +596,58 @@ class MyMatrix final {
     assert(r < nrow && c < ncol);
     return data[r * ncol + c];
   }
-  
+
   T &get(size_t r, size_t c) {
     return const_cast<T &>(const_cast<const MyMatrix *>(this)->get(r, c));
   }
+
+  static void convKernel(const MyMatrix<T> &src, MyMatrix<T> &dst, T k,
+                         size_t ki, size_t kj, size_t i, size_t cols) {
+    for (size_t j = 0; j < cols; j++) {
+      dst.get(i, j) += src.get(i + ki, j + kj) * k;
+    }
+  }
 };
+
+template <>
+ALWAYS_INLINE void MyMatrix<float>::convKernel(const MyMatrix<float> &src,
+                                               MyMatrix<float> &dst, float k,
+                                               size_t ki, size_t kj, size_t i,
+                                               size_t cols) {
+  size_t j = 0;
+  const size_t stride = 32 / sizeof(float);
+  for (; j + stride <= cols; j += stride) {
+    __m256 k8 = _mm256_set1_ps(k);
+    __m256 a8 = _mm256_loadu_ps(&src.get(i + ki, j + kj));
+    __m256 b8 = _mm256_loadu_ps(&dst.get(i, j));
+    __m256 prod = _mm256_fmadd_ps(a8, k8, b8);
+    _mm256_storeu_ps(&dst.get(i, j), prod);
+  }
+  for (; j < cols; j++) {
+    dst.get(i, j) += src.get(i + ki, j + kj) * k;
+  }
+}
+
+template <>
+ALWAYS_INLINE void MyMatrix<double>::convKernel(const MyMatrix<double> &src,
+                                                MyMatrix<double> &dst, double k,
+                                                size_t ki, size_t kj, size_t i,
+                                                size_t cols) {
+  size_t j = 0;
+  const size_t stride = 32 / sizeof(double);
+  for (; j + stride <= cols; j += stride) {
+    __m256d k8 = _mm256_set1_pd(k);
+    __m256d a8 = _mm256_loadu_pd(&src.get(i + ki, j + kj));
+    __m256d b8 = _mm256_loadu_pd(&dst.get(i, j));
+    __m256d prod = _mm256_fmadd_pd(a8, k8, b8);
+    _mm256_storeu_pd(&dst.get(i, j), prod);
+  }
+  for (; j < cols; j++) {
+    dst.get(i, j) += src.get(i + ki, j + kj) * k;
+  }
+}
 
 extern template class MyMatrix<int>;
 extern template class MyMatrix<float>;
 extern template class MyMatrix<double>;
 MyMatrix<float> matmul55(const MyMatrix<float> &a, const MyMatrix<float> &b);
-
-#endif /* MYMATRIX */

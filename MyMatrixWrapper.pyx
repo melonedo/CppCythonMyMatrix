@@ -13,21 +13,21 @@ ctypedef fused NumOrMat:
     Matrix
 
 cdef class Matrix:
-    cdef MyMatrix[double] mat
+    cdef MyMatrix[float] mat
 
     def __init__(self, int rows = 0, int cols = 0):
-        self.mat = MyMatrix[double](rows, cols)
+        self.mat = MyMatrix[float](rows, cols)
 
     @staticmethod
-    def from_ndarray(cnp.ndarray[double, ndim=2] arr):
+    def from_ndarray(cnp.ndarray[float, ndim=2] arr):
         cdef Matrix mat
         mat = Matrix()
         arr = np.ascontiguousarray(arr)
-        mat.mat = MyMatrix[double](&arr[0, 0], arr.shape[0], arr.shape[1])
+        mat.mat = MyMatrix[float](&arr[0, 0], arr.shape[0], arr.shape[1])
         return mat
 
     def to_ndarray(self):
-        view = <double[:self.mat.getRows(), :self.mat.getCols()]> self.mat.getData()
+        view = <float[:self.mat.getRows(), :self.mat.getCols()]> self.mat.getData()
         return np.asarray(view).copy()
 
     def __str__(self):
@@ -97,17 +97,22 @@ cdef class Matrix:
             ret.mat = self.mat * other.mat
         return ret
 
-    def slow_mul(self, Matrix other):
+    def mula_slow(self, Matrix other):
         ret = Matrix()
         ret.mat = self.mat.mul(other.mat)
         return ret
 
-    def inv(self, double tol = 0.001):
+    def inv(self, float tol = 0.001):
         ret = Matrix()
         ret.mat = self.mat.inv(tol)
         return ret
 
     def conv(self, Matrix kernel):
+        ret = Matrix()
+        ret.mat = self.mat.conv(kernel.mat)
+        return ret
+
+    def conv_slow(self, Matrix kernel):
         ret = Matrix()
         ret.mat = self.mat.conv(kernel.mat)
         return ret

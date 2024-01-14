@@ -137,7 +137,6 @@ TYPED_TEST(OperatorTest, Mul) {
   EXPECT_EQ(m5, m4);
 }
 
-
 TYPED_TEST(OperatorTest, Mul234) {
   MyMatrix<TypeParam> A{{-120, -104, 126}, {44, 43, 17}};
   MyMatrix<TypeParam> B{
@@ -191,7 +190,7 @@ TYPED_TEST(OperatorTest, ScalarMul) {
   EXPECT_EQ(m1, m6);
 }
 
-TYPED_TEST(OperatorTest, inverse) {
+TYPED_TEST(OperatorTest, Inverse) {
   if (!std::is_floating_point_v<TypeParam>) return;
 
   MyMatrix<TypeParam> m{{1, 0, 0}, {1, 2, 3}, {6, 5, 4}};
@@ -202,7 +201,7 @@ TYPED_TEST(OperatorTest, inverse) {
   EXPECT_PRED3(this->approx, res, inv, 0.001);
 }
 
-TYPED_TEST(OperatorTest, pseudoinverse) {
+TYPED_TEST(OperatorTest, Pseudoinverse) {
   if (!std::is_floating_point_v<TypeParam>) return;
 
   MyMatrix<TypeParam> m1{{1, 2, 3}, {4, 5, 6}};
@@ -213,16 +212,59 @@ TYPED_TEST(OperatorTest, pseudoinverse) {
   EXPECT_PRED3(this->approx, m2.pinv() * m2, I, 0.001);
 }
 
-TYPED_TEST(OperatorTest, transpose) {
+TYPED_TEST(OperatorTest, Transpose) {
   MyMatrix<TypeParam> m1{{1, 2, 3}, {4, 5, 6}};
   MyMatrix<TypeParam> m2{{1, 4}, {2, 5}, {3, 6}};
   EXPECT_EQ(m1.transpose(), m2);
 }
 
-TYPED_TEST(OperatorTest, conv) {
-  MyMatrix<TypeParam> kernel{{-1, 2, -1}};
-  MyMatrix<TypeParam> m2{{6}};
-  EXPECT_EQ(kernel.conv(kernel), m2);
+TYPED_TEST(OperatorTest, Conv1d) {
+  MyMatrix<TypeParam> kernel1{{-1, 2, -1}};
+  MyMatrix<TypeParam> result1{{6}};
+
+  EXPECT_EQ(kernel1.conv_slow(kernel1), result1);
+  EXPECT_EQ(kernel1.transpose().conv_slow(kernel1.transpose()),
+            result1.transpose());
+
+  MyMatrix<TypeParam> kernel2{{1, 0, -1}};
+  MyMatrix<TypeParam> mat2{{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+                            12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22}};
+  auto result2 = mat2.conv_slow(kernel2);
+  auto result3 = mat2.conv(kernel2);
+  for (size_t i = 0; i < 20; i++) {
+    EXPECT_EQ(result2.at(0, i), -2);
+  }
+  EXPECT_EQ(result2, result3);
+
+  auto result4 = mat2.transpose().conv_slow(kernel2.transpose());
+  for (size_t i = 0; i < 20; i++) {
+    EXPECT_EQ(result4.at(i, 0), -2);
+  }
+}
+
+TYPED_TEST(OperatorTest, Conv2d) {
+  MyMatrix<TypeParam> kernel{{1, 0}, {2, -3}};
+  MyMatrix<TypeParam> mat{{1, 2, 3, 4, 5, 6, 7, 8},
+                          {9, 10, 11, 12, 13, 14, 15, 16},
+                          {17, 18, 19, 20, 21, 22, 23, 24}};
+  auto result = mat.conv_slow(kernel);
+  auto result2 = mat.conv(kernel);
+  for (size_t i = 0; i < 2; i++) {
+    for (size_t j = 0; j < 7; j++) {
+      EXPECT_EQ(result.at(i, j), -11);
+    }
+  }
+  EXPECT_EQ(result2, result);
+}
+
+TYPED_TEST(OperatorTest, ConvNull) {
+  MyMatrix<TypeParam> kernel{{1, 0}, {2, -3}};
+  MyMatrix<TypeParam> mat{{1}};
+  auto result = mat.conv_slow(kernel);
+  auto result2 = mat.conv(kernel);
+  MyMatrix<TypeParam> result3;
+  EXPECT_EQ(result, result3);
+  EXPECT_EQ(result2, result3);
 }
 
 TYPED_TEST(OperatorTest, Exception) {
