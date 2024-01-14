@@ -97,7 +97,7 @@ cdef class Matrix:
             ret.mat = self.mat * other.mat
         return ret
 
-    def mula_slow(self, Matrix other):
+    def mul_slow(self, Matrix other):
         ret = Matrix()
         ret.mat = self.mat.mul(other.mat)
         return ret
@@ -114,5 +114,5 @@ cdef class Matrix:
 
     def conv_slow(self, Matrix kernel):
         ret = Matrix()
-        ret.mat = self.mat.conv(kernel.mat)
+        ret.mat = self.mat.conv_slow(kernel.mat)
         return ret

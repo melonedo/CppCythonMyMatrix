@@ -499,9 +499,9 @@ class MyMatrix final {
       }
     }
 
-    for (size_t ki = 0; ki < kernel.nrow; ki++) {
-      for (size_t kj = 0; kj < kernel.ncol; kj++) {
-        for (size_t i = 0; i < rows; i++) {
+    for (size_t i = 0; i < rows; i++) {
+      for (size_t ki = 0; ki < kernel.nrow; ki++) {
+        for (size_t kj = 0; kj < kernel.ncol; kj++) {
           convKernel(*this, res, kernel.get(ki, kj), ki, kj, i, cols);
         }
       }
@@ -616,10 +616,12 @@ ALWAYS_INLINE void MyMatrix<float>::convKernel(const MyMatrix<float> &src,
                                                size_t cols) {
   size_t j = 0;
   const size_t stride = 32 / sizeof(float);
+  const float *src_base = &src.get(i + ki, kj);
+  float *dst_base = &dst.get(i, 0);
   for (; j + stride <= cols; j += stride) {
     __m256 k8 = _mm256_set1_ps(k);
-    __m256 a8 = _mm256_loadu_ps(&src.get(i + ki, j + kj));
-    __m256 b8 = _mm256_loadu_ps(&dst.get(i, j));
+    __m256 a8 = _mm256_loadu_ps(src_base + j);
+    __m256 b8 = _mm256_loadu_ps(dst_base + j);
     __m256 prod = _mm256_fmadd_ps(a8, k8, b8);
     _mm256_storeu_ps(&dst.get(i, j), prod);
   }
@@ -635,10 +637,12 @@ ALWAYS_INLINE void MyMatrix<double>::convKernel(const MyMatrix<double> &src,
                                                 size_t cols) {
   size_t j = 0;
   const size_t stride = 32 / sizeof(double);
+  const double *src_base = &src.get(i + ki, kj);
+  double *dst_base = &dst.get(i, 0);
   for (; j + stride <= cols; j += stride) {
     __m256d k8 = _mm256_set1_pd(k);
-    __m256d a8 = _mm256_loadu_pd(&src.get(i + ki, j + kj));
-    __m256d b8 = _mm256_loadu_pd(&dst.get(i, j));
+    __m256d a8 = _mm256_loadu_pd(src_base + j);
+    __m256d b8 = _mm256_loadu_pd(dst_base + j);
     __m256d prod = _mm256_fmadd_pd(a8, k8, b8);
     _mm256_storeu_pd(&dst.get(i, j), prod);
   }
